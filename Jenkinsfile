@@ -1,9 +1,9 @@
 stage 'CI'
+
 node {
 
-    checkout scm
-
-    //git branch: 'jenkins2-course', 
+	checkout scm
+    // git branch: 'jenkins2-course', 
     //    url: 'https://github.com/g0t4/solitaire-systemjs-course'
 
     // pull dependencies from npm
@@ -13,90 +13,59 @@ node {
     // stash code & dependencies to expedite subsequent testing
     // and ensure same code & dependencies are used throughout the pipeline
     // stash is a temporary archive
-    stash name: 'everything', 
-          excludes: 'test-results/**', 
-          includes: '**'
+    //stash name: 'everything', 
+    //      excludes: 'test-results/**', 
+     //     includes: '**'
     
+    
+}
+
+
+stage 'Browser Testing'
+node {
     // test with PhantomJS for "fast" "generic" results
     // on windows use: bat 'npm run test-single-run -- --browsers PhantomJS'
     sh 'npm run test-single-run -- --browsers PhantomJS'
     
     // archive karma test results (karma is configured to export junit xml files)
     step([$class: 'JUnitResultArchiver', 
-          testResults: 'test-results/**/test-results.xml'])
-          
+            testResults: 'test-results/**/test-results.xml'])
+
+//parallel phantomJS: {
+  //  runTests("PhantomJS")
+//}
+    notify("Deploy to Staging")
 }
 
-// demoing a second agent
-node('mac') {
-    // on windows use: bat 'dir'
-    sh 'ls'
+input 'Deploy to Staging?'
 
-    // on windows use: bat 'del /S /Q *'
-    sh 'rm -rf *'
-
-    unstash 'everything'
-
-    // on windows use: bat 'dir'
-    sh 'ls'
-}
-
-//parallel integration testing
-stage 'Browser Testing'
-parallel chrome: {
-    runTests("Chrome")
-}, firefox: {
-    runTests("Firefox")
-}, safari: {
-    runTests("Safari")
-}
-
-def runTests(browser) {
-    node {
-        // on windows use: bat 'del /S /Q *'
-        sh 'rm -rf *'
-
-        unstash 'everything'
-
-        // on windows use: bat "npm run test-single-run -- --browsers ${browser}"
-        sh "npm run test-single-run -- --browsers ${browser}"
-
-        step([$class: 'JUnitResultArchiver', 
-              testResults: 'test-results/**/test-results.xml'])
-    }
-}
-
+stage name: 'Deploy', concurrency: 1
 node {
-    notify("Deploy to staging?")
-}
-
-input 'Deploy to staging?'
-
-// limit concurrency so we don't perform simultaneous deploys
-// and if multiple pipelines are executing, 
-// newest is only that will be allowed through, rest will be canceled
-stage name: 'Deploy to staging', concurrency: 1
-node {
-    // write build number to index page so we can see this update
-    // on windows use: bat "echo '<h1>${env.BUILD_DISPLAY_NAME}</h1>' >> app/index.html"
     sh "echo '<h1>${env.BUILD_DISPLAY_NAME}</h1>' >> app/index.html"
-    
-    // deploy to a docker container mapped to port 3000
-    // on windows use: bat 'docker-compose up -d --build'
-    sh 'docker-compose up -d --build'
-    
-    notify 'Solitaire Deployed!'
+    sh "rm -rf /var/jenkins_home/jobs/solitaire_pipeline/dockerFiles/*"
+    sh "cp Dockerfile /var/jenkins_home/jobs/solitaire_pipeline/dockerFiles/Dockerfile"
+    sh "cp -a app /var/jenkins_home/jobs/solitaire_pipeline/dockerFiles/"
+    sh "ssh Gaz@192.168.1.3 'env PATH=/usr/local/bin docker build -t solitaire:latest ~/jenkins_home/jobs/solitaire_pipeline/dockerFiles'"
+    sh "ssh Gaz@192.168.1.3 'env PATH=/usr/local/bin docker run -P -d solitaire'"
 }
 
+//chrome: {
+  //  runTests("Chrome")
+//}, firefox: {
+ //   runtTests("Firefox")
+//}, safari: {
+  //  runTests("Safari")
+//}
 
-
-
-
-
-
-
-
-
+def runTests(browser){
+    node {
+        sh 'rm -rf *'
+        unstash 'everything'
+        sh "npm run test-single-run -- --browsers ${browser}"
+        step([$class: 'JUnitResultArchiver', 
+            testResults: 'test-results/**/test-results.xml'])
+    }    
+}
 
 def notify(status){
     emailext (
