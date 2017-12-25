@@ -42,11 +42,11 @@ input 'Deploy to Staging?'
 stage name: 'Deploy', concurrency: 1
 node {
     sh "echo '<h1>${env.BUILD_DISPLAY_NAME}</h1>' >> app/index.html"
-    sh "rm -rf /var/jenkins_home/jobs/solitaire_pipeline/dockerFiles/*"
-    sh "cp Dockerfile /var/jenkins_home/jobs/solitaire_pipeline/dockerFiles/Dockerfile"
-    sh "cp -a app /var/jenkins_home/jobs/solitaire_pipeline/dockerFiles/"
-    sh "ssh Gaz@192.168.1.3 'env PATH=/usr/local/bin docker build -t solitaire:latest ~/jenkins_home/jobs/solitaire_pipeline/dockerFiles'"
-    sh "ssh Gaz@192.168.1.3 'env PATH=/usr/local/bin docker run -P -d solitaire'"
+    sh "rm -rf /var/jenkins_home/jobs/solitaire_pipeline_jenkinsfile/dockerFiles/*"
+    sh "cp Dockerfile /var/jenkins_home/jobs/solitaire_pipeline_jenkinsfile/dockerFiles/Dockerfile"
+    sh "cp -a app /var/jenkins_home/jobs/solitaire_pipeline_jenkinsfile/dockerFiles/"
+    sh "ssh Gaz@192.168.1.3 'env PATH=/usr/local/bin docker build -t solitaire_jenkinsfile:latest ~/jenkins_home/jobs/solitaire_pipeline_jenkinsfile/dockerFiles'"
+    sh "ssh Gaz@192.168.1.3 'env PATH=/usr/local/bin docker run -P -d solitaire_jenkinsfile'"
 }
 
 //chrome: {
